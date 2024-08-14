@@ -1,0 +1,689 @@
+** This section of code was taken from https://github.com/dbuezas/esphome-cc1101.  See repository for more information on usage **
+
+esphome:
+  name: fan-controller
+  friendly_name: Fan Controller
+  includes:
+    - cc1101.h
+  libraries:
+    - SPI
+    - "SmartRC-CC1101-Driver-Lib"
+    
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+  
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: ""
+
+ota:
+  platform: esphome
+  password: ""
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Fan-Controller Fallback Hotspot"
+    password: ""
+
+captive_portal:
+
+sensor:
+  - platform: custom
+    lambda: |-
+      auto my_sensor = new CC1101(
+        18, // SCK
+        19, // MISO
+        23, // MOSI
+        5, // CSN
+        32, // GDO0
+        33, // GDO2
+        200, // bandwidth_in_khz
+        304.25 // freq_in_mhz
+      );
+      App.register_component(my_sensor);
+      return {my_sensor};
+    sensors:
+      id: transciver
+      internal: true
+
+remote_transmitter:
+  - pin: GPIO32 # This is GDO0
+    carrier_duty_percent: 100%
+
+remote_receiver:
+  - pin: GPIO33 
+    dump:
+      - raw
+      
+binary_sensor:
+  - platform: remote_receiver
+    name: RF Reciever
+    raw:
+      code: [415,-300,370,-300,375,-300,378,-300,378,-300,379,-300,405]
+            
+
+** end **
+
+
+
+
+switch:
+
+########## - Dining Room Fan Switches - ##########
+
+  - platform: template
+    name: "Dining Room Fan On"
+    id: drf_on
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [722, -699, 302, -746, 310, -748, 302, -732, 323, -730, 344, -693, 358, -349, 692, -359, 671, -383, 681, -724, 308, -721, 359, -378, 670, -384, 655, -351, 706, -344, 716, -356, 669, -384, 676, -741, 306, -720, 333, -700, 360, -711, 322, -737, 344, -693, 307, -396, 672]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      - lambda: get_cc1101(transciver).endTransmission();
+      
+  - platform: template
+    name: "Dining Room Fan Off"
+    id: drf_off
+    turn_on_action: 
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [711, -720, 284, -776, 275, -780, 295, -712, 346, -719, 333, -725, 319, -356, 696, -368, 657, -392, 669, -750, 295, -731, 318, -400, 661, -396, 672, -354, 695, -357, 699, -344, 657, -394, 668, -755, 297, -731, 318, -750, 327, -722, 334, -707, 333, -361, 672, -761, 272]
+          repeat:
+           times: 10
+           wait_time: 10ms
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Light Off"
+    id: drl_off
+    turn_on_action: 
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -100, 710, -706, 316, -735, 318, -729, 330, -694, 359, -699, 357, -684, 371, -316, 732, -343, 690, -369, 669, -732, 341, -689, 372, -342, 690, -382, 696, -309, 724, -322, 737, -318, 715, -345, 692, -736, 318, -689, 376, -693, 360, -354, 695, -335, 721, -324, 711, -720, 337]
+          repeat:
+           times: 10
+           wait_time: 10ms
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Light On"
+    id: drl_on
+    turn_on_action: 
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [628, -101, 672, -731, 318, -738, 324, -696, 355, -695, 362, -710, 351, -684, 369, -324, 733, -319, 704, -373, 669, -736, 319, -714, 346, -368, 691, -354, 696, -334, 724, -324, 708, -344, 690, -376, 693, -684, 367, -699, 352, -696, 359, -329, 720, -335, 723, -697, 330, -369, 676]
+          repeat:
+           times: 10
+           wait_time: 10ms
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Fan Speed - Off"
+    id: drf_speed_off
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [638, -100, 714, -708, 302, -755, 318, -730, 329, -694, 358, -699, 362, -685, 348, -337, 726, -341, 712, -343, 691, -729, 320, -713, 345, -350, 708, -343, 714, -359, 696, -315, 729, -319, 709, -342, 720, -709, 319, -708, 368, -694, 358, -346, 716, -689, 345, -689, 374, -693, 336]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Fan Speed - High"
+    id: drf_speed_hi
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -103, 733, -700, 300, -747, 311, -746, 326, -681, 364, -705, 345, -695, 360, -324, 740, -336, 720, -325, 683, -720, 337, -719, 340, -359, 699, -364, 685, -316, 738, -331, 718, -335, 697, -356, 710, -720, 311, -696, 359, -705, 365, -358, 684, -696, 355, -343, 715, -336, 694]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Fan Speed - Medium"
+    id: drf_speed_med
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -103, 726, -688, 319, -727, 331, -745, 309, -699, 356, -687, 370, -691, 369, -319, 735, -323, 698, -354, 695, -715, 345, -699, 352, -370, 695, -358, 696, -308, 749, -316, 734, -320, 690, -356, 695, -735, 322, -696, 355, -694, 360, -381, 695, -684, 368, -320, 685, -740, 315]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: "Dining Room Fan Speed - Low"
+    id: drf_speed_lo
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [631, -101, 722, -689, 319, -738, 321, -699, 353, -694, 360, -706, 351, -685, 368, -324, 736, -318, 703, -347, 717, -711, 319, -715, 345, -365, 691, -356, 695, -337, 725, -316, 734, -343, 690, -353, 694, -690, 368, -699, 352, -694, 362, -330, 717, -709, 343, -697, 329, -366, 700]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Dining Room Fan - Color"
+    id: drf_color
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [707, -696, 308, -745, 318, -756, 296, -717, 346, -720, 333, -700, 361, -334, 719, -330, 677, -377, 687, -745, 310, -701, 361, -358, 674, -381, 683, -348, 708, -344, 717, -333, 671, -384, 679, -753, 305, -721, 333, -375, 669, -709, 345, -726, 326, -368, 692, -708, 324]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+########## - Living Rooom Fan Switches- ##########
+
+  - platform: template
+    name: "Living Room Fan Light - On"
+    id: lrl_on
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [707, -700, 350, -695, 359, -705, 309, -735, 321, -733, 322, -698, 353, -371, 694, -358, 699, -331, 702, -721, 332, -721, 316, -377, 671, -384, 681, -700, 352, -695, 361, -706, 328, -359, 697, -712, 322, -741, 311, -747, 309, -383, 672, -383, 682, -700, 350, -319, 739]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan Light - Off"
+    id: lrl_off
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [658, -722, 329, -721, 336, -708, 334, -736, 295, -758, 299, -723, 330, -397, 670, -383, 675, -330, 703, -721, 332, -722, 309, -377, 670, -383, 678, -712, 346, -720, 332, -700, 360, -335, 720, -703, 322, -724, 333, -721, 330, -378, 671, -386, 658, -376, 682, -720, 333]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan - Off"
+    id: lrf_off
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [689, -693, 385, -677, 355, -709, 316, -734, 323, -723, 335, -695, 359, -354, 695, -334, 724, -324, 734, -694, 335, -720, 325, -357, 700, -361, 689, -696, 354, -695, 362, -708, 350, -334, 722, -699, 328, -720, 334, -723, 325, -683, 372, -680, 371, -319, 738, -681, 377]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan - On"
+    id: lrf_on
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [694, -710, 341, -691, 381, -695, 316, -729, 319, -708, 341, -715, 358, -346, 691, -336, 720, -341, 733, -693, 311, -745, 317, -357, 699, -365, 689, -693, 359, -700, 357, -683, 371, -333, 728, -696, 308, -743, 313, -703, 357, -683, 365, -704, 347, -693, 386, -327, 721]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan Speed - Medium"
+    id: lrf_speed_med
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [698, -683, 370, -694, 358, -699, 309, -724, 347, -710, 343, -689, 353, -369, 691, -336, 719, -331, 728, -694, 334, -719, 333, -351, 694, -360, 704, -690, 353, -694, 363, -682, 378, -336, 723, -674, 350, -721, 311, -721, 352, -357, 697, -683, 367, -316, 739, -697, 365]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: "Living Room Fan Speed - Low"
+    id: lrf_speed_lo
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [609, -774, 281, -756, 299, -758, 271, -784, 278, -798, 230, -775, 305, -430, 600, -430, 632, -394, 656, -773, 269, -779, 273, -431, 606, -459, 609, -748, 306, -752, 305, -754, 295, -393, 656, -771, 257, -796, 246, -805, 247, -452, 608, -774, 279, -775, 280, -404, 672]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan Speed - Off"
+    id: lrf_speed_off
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [657, -719, 330, -723, 332, -731, 298, -759, 296, -753, 305, -722, 307, -426, 647, -409, 627, -378, 680, -747, 282, -773, 279, -401, 646, -406, 655, -745, 302, -748, 307, -754, 300, -381, 675, -748, 278, -772, 284, -778, 275, -406, 650, -729, 322, -746, 307, -748, 318]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: "Living Room Fan Speed - High"
+    id: lrf_speed_hi
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [644, -752, 295, -742, 322, -747, 281, -771, 270, -753, 296, -767, 297, -420, 645, -377, 672, -381, 673, -744, 278, -773, 282, -425, 621, -407, 652, -755, 297, -747, 306, -751, 308, -382, 672, -755, 272, -777, 280, -747, 282, -426, 647, -735, 321, -376, 682, -371, 678]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: "Living Room Fan - Color"
+    id: lrf_color
+    turn_on_action:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [856, -130, 708, -683, 369, -668, 383, -671, 340, -730, 319, -734, 348, -671, 380, -343, 691, -362, 700, -333, 727, -694, 358, -696, 310, -373, 693, -360, 705, -665, 370, -693, 361, -700, 365, -337, 720, -689, 329, -719, 338, -347, 716, -689, 343, -689, 375, -367, 691, -686, 372]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+########## - Latching Light Switches - ##########
+
+  - platform: template
+    name: "Dining Room Light"
+    id: DR_Light
+    optimistic: True
+    on_turn_on:
+      switch.turn_on: drl_on
+    on_turn_off:
+      switch.turn_on: drl_off   
+  
+  - platform: template
+    name: "Living Room Light"
+    id: LR_Light
+    optimistic: True
+    on_turn_on:
+      switch.turn_on: lrl_on
+    on_turn_off:
+      switch.turn_on: lrl_off  
+
+fan:
+
+######### - Only Fans - ##########
+
+  - platform: template 
+    name: "Dining Room Fan"
+    id: DR_Fan
+    speed_count: 3
+    on_turn_on:
+      - switch.turn_on: drf_speed_hi
+      #- lambda: 'id(DR_Fan).speed = 3;' 
+    on_turn_off:
+      - switch.turn_on: drf_speed_off
+      #- switch.turn_off: DR_Light
+    on_speed_set:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(DR_Fan).speed == 3;' 
+            then:
+              - switch.turn_on: drf_speed_hi
+        - if:
+            condition:
+              lambda: 'return id(DR_Fan).speed == 2;'
+            then:
+              - switch.turn_on: drf_speed_med
+        - if:
+            condition:
+              lambda: 'return id(DR_Fan).speed == 1;' 
+            then:
+              - switch.turn_on: drf_speed_lo
+
+  - platform: template 
+    name: "Living Room Fan"
+    id: LR_Fan
+    speed_count: 3
+    on_turn_on:
+      - switch.turn_on: lrf_speed_hi
+      #- lambda: 'id(LR_Fan).speed = 3;' 
+    on_turn_off:
+      - switch.turn_on: lrf_speed_off
+    on_speed_set:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(LR_Fan).speed == 3;' 
+            then:
+              - switch.turn_on: lrf_speed_hi
+        - if:
+            condition:
+              lambda: 'return id(LR_Fan).speed == 2;'
+            then:
+              - switch.turn_on: lrf_speed_med
+        - if:
+            condition:
+              lambda: 'return id(LR_Fan).speed == 1;' 
+            then:
+              - switch.turn_on: lrf_speed_lo
+
+button:
+
+######### - Fan Buttons - ##########
+
+  - platform: template
+    name: Living Room Fan Light - On
+    id: LRFLonButton
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [707, -700, 350, -695, 359, -705, 309, -735, 321, -733, 322, -698, 353, -371, 694, -358, 699, -331, 702, -721, 332, -721, 316, -377, 671, -384, 681, -700, 352, -695, 361, -706, 328, -359, 697, -712, 322, -741, 311, -747, 309, -383, 672, -383, 682, -700, 350, -319, 739]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan Light - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [658, -722, 329, -721, 336, -708, 334, -736, 295, -758, 299, -723, 330, -397, 670, -383, 675, -330, 703, -721, 332, -722, 309, -377, 670, -383, 678, -712, 346, -720, 332, -700, 360, -335, 720, -703, 322, -724, 333, -721, 330, -378, 671, -386, 658, -376, 682, -720, 333]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [689, -693, 385, -677, 355, -709, 316, -734, 323, -723, 335, -695, 359, -354, 695, -334, 724, -324, 734, -694, 335, -720, 325, -357, 700, -361, 689, -696, 354, -695, 362, -708, 350, -334, 722, -699, 328, -720, 334, -723, 325, -683, 372, -680, 371, -319, 738, -681, 377]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan - On
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [694, -710, 341, -691, 381, -695, 316, -729, 319, -708, 341, -715, 358, -346, 691, -336, 720, -341, 733, -693, 311, -745, 317, -357, 699, -365, 689, -693, 359, -700, 357, -683, 371, -333, 728, -696, 308, -743, 313, -703, 357, -683, 365, -704, 347, -693, 386, -327, 721]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan Speed - Medium
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [698, -683, 370, -694, 358, -699, 309, -724, 347, -710, 343, -689, 353, -369, 691, -336, 719, -331, 728, -694, 334, -719, 333, -351, 694, -360, 704, -690, 353, -694, 363, -682, 378, -336, 723, -674, 350, -721, 311, -721, 352, -357, 697, -683, 367, -316, 739, -697, 365]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: Living Room Fan Speed - Low
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [609, -774, 281, -756, 299, -758, 271, -784, 278, -798, 230, -775, 305, -430, 600, -430, 632, -394, 656, -773, 269, -779, 273, -431, 606, -459, 609, -748, 306, -752, 305, -754, 295, -393, 656, -771, 257, -796, 246, -805, 247, -452, 608, -774, 279, -775, 280, -404, 672]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan Speed - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [657, -719, 330, -723, 332, -731, 298, -759, 296, -753, 305, -722, 307, -426, 647, -409, 627, -378, 680, -747, 282, -773, 279, -401, 646, -406, 655, -745, 302, -748, 307, -754, 300, -381, 675, -748, 278, -772, 284, -778, 275, -406, 650, -729, 322, -746, 307, -748, 318]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Living Room Fan Speed - High
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [644, -752, 295, -742, 322, -747, 281, -771, 270, -753, 296, -767, 297, -420, 645, -377, 672, -381, 673, -744, 278, -773, 282, -425, 621, -407, 652, -755, 297, -747, 306, -751, 308, -382, 672, -755, 272, -777, 280, -747, 282, -426, 647, -735, 321, -376, 682, -371, 678]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: Living Room Fan - Color
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [856, -130, 708, -683, 369, -668, 383, -671, 340, -730, 319, -734, 348, -671, 380, -343, 691, -362, 700, -333, 727, -694, 358, -696, 310, -373, 693, -360, 705, -665, 370, -693, 361, -700, 365, -337, 720, -689, 329, -719, 338, -347, 716, -689, 343, -689, 375, -367, 691, -686, 372]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+
+
+
+
+
+
+  - platform: template
+    name: Dining Room Fan Light - On
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [628, -101, 672, -731, 318, -738, 324, -696, 355, -695, 362, -710, 351, -684, 369, -324, 733, -319, 704, -373, 669, -736, 319, -714, 346, -368, 691, -354, 696, -334, 724, -324, 708, -344, 690, -376, 693, -684, 367, -699, 352, -696, 359, -329, 720, -335, 723, -697, 330, -369, 676]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan Light - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -100, 710, -706, 316, -735, 318, -729, 330, -694, 359, -699, 357, -684, 371, -316, 732, -343, 690, -369, 669, -732, 341, -689, 372, -342, 690, -382, 696, -309, 724, -322, 737, -318, 715, -345, 692, -736, 318, -689, 376, -693, 360, -354, 695, -335, 721, -324, 711, -720, 337]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [711, -720, 284, -776, 275, -780, 295, -712, 346, -719, 333, -725, 319, -356, 696, -368, 657, -392, 669, -750, 295, -731, 318, -400, 661, -396, 672, -354, 695, -357, 699, -344, 657, -394, 668, -755, 297, -731, 318, -750, 327, -722, 334, -707, 333, -361, 672, -761, 272]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan - On
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [722, -699, 302, -746, 310, -748, 302, -732, 323, -730, 344, -693, 358, -349, 692, -359, 671, -383, 681, -724, 308, -721, 359, -378, 670, -384, 655, -351, 706, -344, 716, -356, 669, -384, 676, -741, 306, -720, 333, -700, 360, -711, 322, -737, 344, -693, 307, -396, 672]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan Speed - Medium
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -103, 726, -688, 319, -727, 331, -745, 309, -699, 356, -687, 370, -691, 369, -319, 735, -323, 698, -354, 695, -715, 345, -699, 352, -370, 695, -358, 696, -308, 749, -316, 734, -320, 690, -356, 695, -735, 322, -696, 355, -694, 360, -381, 695, -684, 368, -320, 685, -740, 315]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: Dining Room Fan Speed - Low
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [631, -101, 722, -689, 319, -738, 321, -699, 353, -694, 360, -706, 351, -685, 368, -324, 736, -318, 703, -347, 717, -711, 319, -715, 345, -365, 691, -356, 695, -337, 725, -316, 734, -343, 690, -353, 694, -690, 368, -699, 352, -694, 362, -330, 717, -709, 343, -697, 329, -366, 700]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan Speed - Off
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [638, -100, 714, -708, 302, -755, 318, -730, 329, -694, 358, -699, 362, -685, 348, -337, 726, -341, 712, -343, 691, -729, 320, -713, 345, -350, 708, -343, 714, -359, 696, -315, 729, -319, 709, -342, 720, -709, 319, -708, 368, -694, 358, -346, 716, -689, 345, -689, 374, -693, 336]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+  - platform: template
+    name: Dining Room Fan Speed - High
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [642, -103, 733, -700, 300, -747, 311, -746, 326, -681, 364, -705, 345, -695, 360, -324, 740, -336, 720, -325, 683, -720, 337, -719, 340, -359, 699, -364, 685, -316, 738, -331, 718, -335, 697, -356, 710, -720, 311, -696, 359, -705, 365, -358, 684, -696, 355, -343, 715, -336, 694]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+  
+  - platform: template
+    name: Dining Room Fan - Color
+    on_press:
+      - lambda: get_cc1101(transciver).beginTransmission();
+      - remote_transmitter.transmit_raw:
+          code: [707, -696, 308, -745, 318, -756, 296, -717, 346, -720, 333, -700, 361, -334, 719, -330, 677, -377, 687, -745, 310, -701, 361, -358, 674, -381, 683, -348, 708, -344, 717, -333, 671, -384, 679, -753, 305, -721, 333, -375, 669, -709, 345, -726, 326, -368, 692, -708, 324]
+          repeat:
+            times: 10
+            wait_time: 10ms
+      #- remote_transmitter.transmit_rc_switch_raw:
+      #    code: '111111000110011101110001'
+      #    protocol: 1
+      - lambda: get_cc1101(transciver).endTransmission();
+
+
+
+        
